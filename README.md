@@ -98,6 +98,41 @@ OPTIONS:
 
 Read the example usage on the [wiki](https://github.com/tsl0922/ttyd/wiki/Example-Usage).
 
+## Mobile front end
+
+This fork adds a touch front end to the normal ttyd page. It needs no server change: build one
+self-contained page and hand it to any ttyd 1.7.4 or newer with `-I`.
+
+```bash
+cd html && yarn install && yarn inline
+ttyd -W -I html/dist/inline.html tmux attach-session -t main
+```
+
+It turns on when the browser reports a coarse pointer. A desktop browser gets the normal page, with no toolbar.
+
+- Field above the keyboard: type or dictate, then Send. On an empty field the button says Enter, and Backspace,
+  Enter and the arrows go straight to the terminal.
+- Keys bar: Esc, Tab, Ctrl and Alt (tap once, they apply to the next key), arrows, Home, End, PgUp, PgDn,
+  `|` `~` `-` `/`, Ctrl+C, Paste, A- and A+, Copy. Swipe it sideways to reach them all.
+- Swipe the terminal to scroll. Inside tmux this enters tmux copy mode, and the Exit button or returning to the
+  bottom leaves it. Elsewhere it scrolls the history, or sends wheel events to programs that ask for the mouse.
+- Copy opens the terminal text as plain selectable text, with links you can tap.
+- After sleep or a lost connection it reconnects by itself and keeps what you were typing. The dot shows the state:
+  tap it to retry.
+
+URL options:
+
+| Option                  | Effect                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `?mobile=1`, `?mobile=0` | force the touch page on or off                                                         |
+| `?canvas=1`, `?webgl=1` | use the canvas or WebGL renderer on touch; the default there is the DOM renderer        |
+| `?safe=1`, `?safe=0`    | force the safest start mode on or off (it also turns on by itself after a failed start) |
+| `?addons=1`             | load the file transfer and image addons, which stay off on touch                        |
+| `?tmux=1`, `?tmux=0`    | say whether tmux is running, when detection gets it wrong                               |
+
+Tests need a Chrome and Playwright: `cd html/test-mobile && node run.js ../dist/inline.html <groups>`. See `run.js`
+and `lib.js` for the scratch folder they expect.
+
 ## Browser Support
 
 Modern browsers, See [Browser Support](https://github.com/xtermjs/xterm.js#browser-support).
