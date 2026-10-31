@@ -38,14 +38,24 @@ async function scrollCase(ctx, conf, label, port) {
     const entered = await h.until(() => inMode(), 2000);
     await h.until(async () => (await h.uiState(page)).chip, 1500);
     let st = await h.uiState(page);
-    r.add(g, `${label}: first swipe enters tmux copy mode, indicator shown`, !!entered && /^Scroll \d+\/\d+$/.test(st.chip || ''), `chip=${st.chip}`);
+    r.add(
+        g,
+        `${label}: first swipe enters tmux copy mode, indicator shown`,
+        !!entered && /^Scroll \d+\/\d+$/.test(st.chip || ''),
+        `chip=${st.chip}`
+    );
     await sleep(600);
     const p1 = paneScroll();
     r.add(g, `${label}: swipe moved history`, p1 > 5, `tmux position ${p1}`);
     const moved = await lib.screen(page);
     r.add(g, `${label}: screen content changed`, moved.join('\n') !== base.join('\n'));
     const sentSoFar = h.inputFrames(log).join('');
-    r.add(g, `${label}: prefix then copy key sent once`, sentSoFar.split('\x02[').length === 2 && !/\x1b\[A/.test(sentSoFar), JSON.stringify(sentSoFar.slice(0, 40)));
+    r.add(
+        g,
+        `${label}: prefix then copy key sent once`,
+        sentSoFar.split('\x02[').length === 2 && !/\x1b\[A/.test(sentSoFar),
+        JSON.stringify(sentSoFar.slice(0, 40))
+    );
 
     // A flick travels further than the finger: momentum
     const beforeFling = paneScroll();
@@ -53,10 +63,20 @@ async function scrollCase(ctx, conf, label, port) {
     await sleep(1500);
     const afterFling = paneScroll();
     const fingerLines = 420 / 15;
-    r.add(g, `${label}: flick has momentum`, afterFling - beforeFling > fingerLines, `moved ${afterFling - beforeFling} lines, finger alone ${Math.round(fingerLines)}`);
+    r.add(
+        g,
+        `${label}: flick has momentum`,
+        afterFling - beforeFling > fingerLines,
+        `moved ${afterFling - beforeFling} lines, finger alone ${Math.round(fingerLines)}`
+    );
     st = await h.uiState(page);
     const chipPos = Number(/Scroll (\d+)/.exec(st.chip || '')?.[1]);
-    r.add(g, `${label}: indicator shows the real position`, Math.abs(chipPos - paneScroll()) <= 1, `${st.chip} vs ${paneScroll()}`);
+    r.add(
+        g,
+        `${label}: indicator shows the real position`,
+        Math.abs(chipPos - paneScroll()) <= 1,
+        `${st.chip} vs ${paneScroll()}`
+    );
 
     // Slow swipe up moves toward newer text
     const b4 = paneScroll();
@@ -82,7 +102,12 @@ async function scrollCase(ctx, conf, label, port) {
     await h.typeCompose(page, `echo ok-from-scroll > ${file}`);
     await page.tap('[data-key=send]');
     const got = await h.waitFile(file, 'ok-from-scroll\n');
-    r.add(g, `${label}: sending text leaves scroll mode first, nothing lost`, got === 'ok-from-scroll\n' && !inMode(), JSON.stringify(got));
+    r.add(
+        g,
+        `${label}: sending text leaves scroll mode first, nothing lost`,
+        got === 'ok-from-scroll\n' && !inMode(),
+        JSON.stringify(got)
+    );
 
     // Swiping back to the end leaves scroll mode by itself
     await h.swipe(cdp, 200, 200, 300);
@@ -97,7 +122,12 @@ async function scrollCase(ctx, conf, label, port) {
     const frames = h.inputFrames(log).length;
     await h.swipe(cdp, 200, 500, 200, { hold: 120 });
     await sleep(300);
-    r.add(g, `${label}: swipe toward newer at the live screen sends nothing`, h.inputFrames(log).length === frames && !inMode(), JSON.stringify(h.inputFrames(log).slice(frames)).slice(0, 80) + ` inMode=${inMode()}`);
+    r.add(
+        g,
+        `${label}: swipe toward newer at the live screen sends nothing`,
+        h.inputFrames(log).length === frames && !inMode(),
+        JSON.stringify(h.inputFrames(log).slice(frames)).slice(0, 80) + ` inMode=${inMode()}`
+    );
 
     // Copy mode started some other way is noticed, and survives a reconnect
     tmux('copy-mode', '-t', 'm');
@@ -111,7 +141,12 @@ async function scrollCase(ctx, conf, label, port) {
     await page.touchscreen.tap(200, 300);
     await sleep(250);
     st = await h.uiState(page);
-    r.add(g, `${label}: tap on terminal sends nothing, no focus`, h.inputFrames(log).length === frames2 && st.active !== 'm-input', st.active);
+    r.add(
+        g,
+        `${label}: tap on terminal sends nothing, no focus`,
+        h.inputFrames(log).length === frames2 && st.active !== 'm-input',
+        st.active
+    );
 
     r.add(g, `${label}: no console errors`, log.errors.length === 0, log.errors.slice(0, 2).join(' | ').slice(0, 200));
     await context.close();
@@ -142,7 +177,12 @@ module.exports = {
         await sleep(300);
         const y = await page.evaluate(() => window.term.buffer.active.viewportY);
         const input = h.inputFrames(log).join('');
-        r.add(g, 'no tmux: swipe uses xterm scrollback, sends nothing', y < base && input === '', `viewportY ${base} -> ${y}`);
+        r.add(
+            g,
+            'no tmux: swipe uses xterm scrollback, sends nothing',
+            y < base && input === '',
+            `viewportY ${base} -> ${y}`
+        );
         const limit = await page.evaluate(() => window.term.options.scrollback);
         r.add(g, 'no tmux: scrollback limited on touch', limit === 2000, String(limit));
         let st = await h.uiState(page);
@@ -157,7 +197,11 @@ module.exports = {
         // A program with mouse tracking gets wheel events
         const file = path.join(ctx.tmp, 'mouse.log');
         const port2 = ctx.port + 100;
-        lib.startTtyd({ port: port2, page: ctx.page, cmd: ['python3', path.join(__dirname, 'hexd.py'), file, '\\x1b[?1000h\\x1b[?1006h'] });
+        lib.startTtyd({
+            port: port2,
+            page: ctx.page,
+            cmd: ['python3', path.join(__dirname, 'hexd.py'), file, '\\x1b[?1000h\\x1b[?1006h'],
+        });
         await lib.waitPort(port2);
         context = await lib.mobileContext(ctx.browser);
         ({ page, log } = await h.bootPage(context, `http://127.0.0.1:${port2}/`));
@@ -167,19 +211,33 @@ module.exports = {
         await h.swipe(cdp, 200, 200, 500);
         await sleep(300);
         const mouseUp = Buffer.from(fs.readFileSync(file, 'utf8').replace(/\s+/g, ''), 'hex').toString();
-        r.add(g, 'mouse tracking: swipe down sends wheel up', /\x1b\[<64;\d+;\d+M/.test(mouseUp) && !/\x1b\[<65/.test(mouseUp), JSON.stringify(mouseUp.slice(0, 40)));
+        r.add(
+            g,
+            'mouse tracking: swipe down sends wheel up',
+            /\x1b\[<64;\d+;\d+M/.test(mouseUp) && !/\x1b\[<65/.test(mouseUp),
+            JSON.stringify(mouseUp.slice(0, 40))
+        );
         fs.writeFileSync(file, '');
         await h.swipe(cdp, 200, 500, 200);
         await sleep(300);
         const mouseDown = Buffer.from(fs.readFileSync(file, 'utf8').replace(/\s+/g, ''), 'hex').toString();
-        r.add(g, 'mouse tracking: swipe up sends wheel down', /\x1b\[<65;\d+;\d+M/.test(mouseDown), JSON.stringify(mouseDown.slice(0, 40)));
+        r.add(
+            g,
+            'mouse tracking: swipe up sends wheel down',
+            /\x1b\[<65;\d+;\d+M/.test(mouseDown),
+            JSON.stringify(mouseDown.slice(0, 40))
+        );
         await context.close();
         await lib.cleanup();
 
         // Full-screen program with no mouse and no tmux: arrows, as desktop xterm does
         const file2 = path.join(ctx.tmp, 'alt.log');
         const port3 = ctx.port + 200;
-        lib.startTtyd({ port: port3, page: ctx.page, cmd: ['python3', path.join(__dirname, 'hexd.py'), file2, '\\x1b[?1049h'] });
+        lib.startTtyd({
+            port: port3,
+            page: ctx.page,
+            cmd: ['python3', path.join(__dirname, 'hexd.py'), file2, '\\x1b[?1049h'],
+        });
         await lib.waitPort(port3);
         context = await lib.mobileContext(ctx.browser);
         ({ page, log } = await h.bootPage(context, `http://127.0.0.1:${port3}/`));
@@ -189,7 +247,12 @@ module.exports = {
         await h.swipe(cdp, 200, 200, 500);
         await sleep(300);
         const alt = Buffer.from(fs.readFileSync(file2, 'utf8').replace(/\s+/g, ''), 'hex').toString();
-        r.add(g, 'full-screen program, no tmux: swipe sends arrows, no prefix', /\x1b\[A/.test(alt) && !alt.includes('\x02'), JSON.stringify(alt.slice(0, 24)));
+        r.add(
+            g,
+            'full-screen program, no tmux: swipe sends arrows, no prefix',
+            /\x1b\[A/.test(alt) && !alt.includes('\x02'),
+            JSON.stringify(alt.slice(0, 24))
+        );
         await context.close();
     },
 
@@ -224,7 +287,7 @@ module.exports = {
         await sleep(300);
         await h.typeCompose(page, 'seq 1 500 | less');
         await page.tap('[data-key=send]');
-        const lessUp = await lib.waitScreen(page, /\n1\n2\n/, 4000) || (await lib.waitScreen(page, /^1$/m, 2000));
+        const lessUp = (await lib.waitScreen(page, /\n1\n2\n/, 4000)) || (await lib.waitScreen(page, /^1$/m, 2000));
         await page.tap('[data-key=pgdn]');
         await sleep(300);
         const lessMoved = !/^1$/m.test((await lib.screen(page)).join('\n'));
@@ -238,7 +301,7 @@ module.exports = {
             await page.tap('[data-key=send]');
             const up = await lib.waitScreen(page, /PID|CPU/, 4000);
             r.add(g, 'htop renders', up);
-            await page.screenshot({ path: path.join(SHOTS, 'htop.png') });
+            await page.screenshot({ path: path.join(ctx.tmp, 'htop.png') });
             await page.keyboard.insertText('q');
             await sleep(400);
             const st = await h.uiState(page);
@@ -258,14 +321,34 @@ module.exports = {
         await sleep(500);
         const open = lib.resizes(log).slice(n0);
         const dims = open.map(x => `${x.columns}x${x.rows}`).join(' ');
-        r.add(g, 'keyboard opening sends one resize', open.length === 1, `${open.length} resize in ${Date.now() - t0} ms for 17 viewport steps: ${dims}`);
+        r.add(
+            g,
+            'keyboard opening sends one resize',
+            open.length === 1,
+            `${open.length} resize in ${Date.now() - t0} ms for 17 viewport steps: ${dims}`
+        );
         const layout = await page.evaluate(() => {
             const bars = document.querySelector('.m-bars').getBoundingClientRect();
             const term = document.querySelector('#terminal-container').getBoundingClientRect();
             const cmp = document.querySelector('.m-compose').getBoundingClientRect();
-            return { barsBottom: bars.bottom, inner: innerHeight, termBottom: term.bottom, barsTop: bars.top, cmp: cmp.bottom, sy: scrollY, docH: document.documentElement.scrollHeight };
+            return {
+                barsBottom: bars.bottom,
+                inner: innerHeight,
+                termBottom: term.bottom,
+                barsTop: bars.top,
+                cmp: cmp.bottom,
+                sy: scrollY,
+                docH: document.documentElement.scrollHeight,
+            };
         });
-        r.add(g, 'bars sit at the keyboard edge, terminal above them', Math.abs(layout.barsBottom - layout.inner) < 1 && layout.termBottom <= layout.barsTop + 1 && layout.sy === 0, JSON.stringify(layout));
+        r.add(
+            g,
+            'bars sit at the keyboard edge, terminal above them',
+            Math.abs(layout.barsBottom - layout.inner) < 1 &&
+                layout.termBottom <= layout.barsTop + 1 &&
+                layout.sy === 0,
+            JSON.stringify(layout)
+        );
         const n1 = lib.resizes(log).length;
         await sleep(600);
         await page.setViewportSize({ width: 412, height: 515 });
@@ -276,9 +359,19 @@ module.exports = {
         const last = lib.resizes(log).slice(-1)[0];
         const tSize = tmux('display-message', '-t', 'm', '-p', '#{window_width}x#{window_height}').trim();
         const termSize = await page.evaluate(() => `${window.term.cols}x${window.term.rows}`);
-        r.add(g, 'server size follows the terminal', `${last.columns}x${last.rows}` === termSize, `last=${last.columns}x${last.rows} term=${termSize} tmux=${tSize}`);
+        r.add(
+            g,
+            'server size follows the terminal',
+            `${last.columns}x${last.rows}` === termSize,
+            `last=${last.columns}x${last.rows} term=${termSize} tmux=${tSize}`
+        );
         const cols = await page.evaluate(() => window.term.cols);
-        r.add(g, 'portrait shows at least 50 columns', cols >= 50, `${cols} columns at ${await page.evaluate(() => window.term.options.fontSize)}px`);
+        r.add(
+            g,
+            'portrait shows at least 50 columns',
+            cols >= 50,
+            `${cols} columns at ${await page.evaluate(() => window.term.options.fontSize)}px`
+        );
 
         // Rows fill the area without a clipped line, no page scroll, overscroll blocked
         const fitBox = await page.evaluate(() => {
@@ -286,9 +379,23 @@ module.exports = {
             const c = document.querySelector('#terminal-container').getBoundingClientRect();
             const body = getComputedStyle(document.body);
             const root = getComputedStyle(document.documentElement);
-            return { screenBottom: scr.bottom, containerBottom: c.bottom, bodyPos: body.position, over: root.overscrollBehaviorY, touch: getComputedStyle(document.querySelector('#terminal-container')).touchAction };
+            return {
+                screenBottom: scr.bottom,
+                containerBottom: c.bottom,
+                bodyPos: body.position,
+                over: root.overscrollBehaviorY,
+                touch: getComputedStyle(document.querySelector('#terminal-container')).touchAction,
+            };
         });
-        r.add(g, 'no page scroll, no rubber-band', fitBox.screenBottom <= fitBox.containerBottom + 1 && fitBox.bodyPos === 'fixed' && fitBox.over === 'none' && fitBox.touch === 'none', JSON.stringify(fitBox));
+        r.add(
+            g,
+            'no page scroll, no rubber-band',
+            fitBox.screenBottom <= fitBox.containerBottom + 1 &&
+                fitBox.bodyPos === 'fixed' &&
+                fitBox.over === 'none' &&
+                fitBox.touch === 'none',
+            JSON.stringify(fitBox)
+        );
 
         // Font buttons persist
         const f0 = await page.evaluate(() => window.term.options.fontSize);
@@ -331,10 +438,25 @@ module.exports = {
         await page.waitForSelector('.m-overlay');
         const info = await page.evaluate(() => {
             const pre = document.querySelector('.m-overlay-text');
-            return { text: pre.innerText, links: [...pre.querySelectorAll('a')].map(a => a.getAttribute('href')), select: getComputedStyle(pre).userSelect, targets: [...pre.querySelectorAll('a')].map(a => a.rel) };
+            return {
+                text: pre.innerText,
+                links: [...pre.querySelectorAll('a')].map(a => a.getAttribute('href')),
+                select: getComputedStyle(pre).userSelect,
+                targets: [...pre.querySelectorAll('a')].map(a => a.rel),
+            };
         });
-        r.add(g, 'overlay shows the real text', /été 😀/.test(info.text) && /voir https/.test(info.text), JSON.stringify(info.text.slice(0, 60)));
-        r.add(g, 'URLs are links, trailing punctuation left out', info.links.join(' ') === 'https://example.org/a?b=1 http://localhost:9/x', info.links.join(' '));
+        r.add(
+            g,
+            'overlay shows the real text',
+            /été 😀/.test(info.text) && /voir https/.test(info.text),
+            JSON.stringify(info.text.slice(0, 60))
+        );
+        r.add(
+            g,
+            'URLs are links, trailing punctuation left out',
+            info.links.join(' ') === 'https://example.org/a?b=1 http://localhost:9/x',
+            info.links.join(' ')
+        );
         r.add(g, 'text can be selected natively', info.select === 'text' || info.select === 'auto', info.select);
         await page.screenshot({ path: path.join(SHOTS, 'copy-overlay.png') });
         await context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -349,8 +471,17 @@ module.exports = {
         await page.waitForSelector('.m-overlay');
         await page.goBack().catch(() => {});
         await sleep(300);
-        const stillThere = await page.evaluate(() => ({ overlay: !!document.querySelector('.m-overlay'), term: !!window.term, path: location.href }));
-        r.add(g, 'browser back closes the overlay and stays on the page', !stillThere.overlay && stillThere.term, JSON.stringify(stillThere));
+        const stillThere = await page.evaluate(() => ({
+            overlay: !!document.querySelector('.m-overlay'),
+            term: !!window.term,
+            path: location.href,
+        }));
+        r.add(
+            g,
+            'browser back closes the overlay and stays on the page',
+            !stillThere.overlay && stillThere.term,
+            JSON.stringify(stillThere)
+        );
         await page.tap('[data-key=copy]');
         await page.waitForSelector('.m-overlay');
         await page.tap('[data-key=copy-close]');
@@ -370,8 +501,17 @@ module.exports = {
         await lib.waitScreen(p2, /500/);
         await p2.tap('[data-key=copy]');
         await p2.waitForSelector('.m-overlay');
-        const t2 = await p2.$eval('.m-overlay-text', e => ({ text: e.innerText, top: e.scrollTop, max: e.scrollHeight - e.clientHeight }));
-        r.add(g, 'no tmux: overlay includes scrollback', /^1\n2\n/.test(t2.text) && /\n500$/.test(t2.text.trim()), `${t2.text.split('\n').length} lines, scrollTop ${t2.top}/${t2.max}`);
+        const t2 = await p2.$eval('.m-overlay-text', e => ({
+            text: e.innerText,
+            top: e.scrollTop,
+            max: e.scrollHeight - e.clientHeight,
+        }));
+        r.add(
+            g,
+            'no tmux: overlay includes scrollback',
+            /^1\n2\n/.test(t2.text) && /\n500$/.test(t2.text.trim()),
+            `${t2.text.split('\n').length} lines, scrollTop ${t2.top}/${t2.max}`
+        );
         await c2.close();
     },
 
@@ -384,8 +524,11 @@ module.exports = {
         await sleep(400);
         await page.setViewportSize({ width: 412, height: 515 });
         await sleep(500);
-        await h.typeCompose(page, 'bonjour, voici un test avec un texte assez long pour remplir plus de deux lignes du champ de saisie');
-        await sleep(200);
+        await h.typeCompose(
+            page,
+            'bonjour, voici un test avec un texte assez long pour remplir plus de deux lignes du champ de saisie'
+        );
+        await sleep(800);
         await page.screenshot({ path: path.join(SHOTS, 'portrait-keyboard.png') });
         await context.close();
         const port2 = ctx.port + 100;

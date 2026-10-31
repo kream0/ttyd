@@ -35,8 +35,17 @@ module.exports = {
             xtermDisabled: document.querySelector('.xterm-helper-textarea').disabled,
             meta: document.querySelector('meta[name=viewport]').content,
         }));
-        r.add(g, 'profile reports a coarse pointer, mobile UI on', gate.coarse && gate.cls.includes('ttyd-mobile'), `coarse=${gate.coarse}`);
-        r.add(g, 'viewport meta set', /interactive-widget=resizes-content/.test(gate.meta) && /viewport-fit=cover/.test(gate.meta));
+        r.add(
+            g,
+            'profile reports a coarse pointer, mobile UI on',
+            gate.coarse && gate.cls.includes('ttyd-mobile'),
+            `coarse=${gate.coarse}`
+        );
+        r.add(
+            g,
+            'viewport meta set',
+            /interactive-widget=resizes-content/.test(gate.meta) && /viewport-fit=cover/.test(gate.meta)
+        );
         r.add(g, 'xterm textarea cannot take focus', gate.xtermDisabled);
 
         const file = path.join(ctx.tmp, 'compose.txt');
@@ -46,7 +55,12 @@ module.exports = {
         await page.tap('[data-key=send]');
         await sleep(200);
         let st = await h.uiState(page);
-        r.add(g, 'Send clears field, compose keeps focus', st.value === '' && st.active === 'm-input', JSON.stringify(st));
+        r.add(
+            g,
+            'Send clears field, compose keeps focus',
+            st.value === '' && st.active === 'm-input',
+            JSON.stringify(st)
+        );
 
         const sentence =
             'Je voudrais que tu regardes pourquoi le déploiement échoue, then tell me what you think we should do next, because the previous attempt did not work at all and I am not sure why.';
@@ -59,7 +73,12 @@ module.exports = {
         await page.tap('[data-key=send]');
         const want = `${accents}\n${sentence}\n${long}\n`;
         let got = await h.waitFile(file, want);
-        r.add(g, 'accents, emoji, long sentence and long text arrive intact', got === want, `long=${long.length} chars, got=${got.length} want=${want.length}`);
+        r.add(
+            g,
+            'accents, emoji, long sentence and long text arrive intact',
+            got === want,
+            `long=${long.length} chars, got=${got.length} want=${want.length}`
+        );
         endCapture();
         await sleep(200);
 
@@ -68,8 +87,15 @@ module.exports = {
         await capture(ime);
         await page.tap('.m-input');
         const sendKey229 = async type =>
-            cdp.send('Input.dispatchKeyEvent', { type, windowsVirtualKeyCode: 229, nativeVirtualKeyCode: 229, key: 'Unidentified', code: '' });
-        const compose = t => cdp.send('Input.imeSetComposition', { text: t, selectionStart: t.length, selectionEnd: t.length });
+            cdp.send('Input.dispatchKeyEvent', {
+                type,
+                windowsVirtualKeyCode: 229,
+                nativeVirtualKeyCode: 229,
+                key: 'Unidentified',
+                code: '',
+            });
+        const compose = t =>
+            cdp.send('Input.imeSetComposition', { text: t, selectionStart: t.length, selectionEnd: t.length });
         for (const word of ['bonjour', ' ', 'été', ' ', 'hello']) {
             if (word === ' ') {
                 await sendKey229('rawKeyDown');
@@ -85,7 +111,12 @@ module.exports = {
             await cdp.send('Input.insertText', { text: word });
         }
         st = await h.uiState(page);
-        r.add(g, 'IME composition leaves exact text in field', st.value === 'bonjour été hello', JSON.stringify(st.value));
+        r.add(
+            g,
+            'IME composition leaves exact text in field',
+            st.value === 'bonjour été hello',
+            JSON.stringify(st.value)
+        );
         await page.tap('[data-key=send]');
         await sleep(200);
         // Word still composing when Send is tapped, as after a Gboard swipe
@@ -100,7 +131,12 @@ module.exports = {
         await page.tap('[data-key=send]');
         const imeWant = 'bonjour été hello\ncompos\nvoix dictée complète\n';
         got = await h.waitFile(ime, imeWant);
-        r.add(g, 'IME: no duplicate, no loss, composing word sent once', got === imeWant, JSON.stringify(got).slice(0, 120));
+        r.add(
+            g,
+            'IME: no duplicate, no loss, composing word sent once',
+            got === imeWant,
+            JSON.stringify(got).slice(0, 120)
+        );
         st = await h.uiState(page);
         r.add(g, 'field empty after composing send', st.value === '', JSON.stringify(st.value));
         endCapture();
@@ -119,7 +155,11 @@ module.exports = {
         // Empty field goes straight to the terminal
         await page.tap('.m-input');
         const before = () => log.sent.length;
-        const framesSince = n => log.sent.slice(n).filter(f => lib.text(f.d)[0] === '0').map(f => lib.text(f.d).slice(1));
+        const framesSince = n =>
+            log.sent
+                .slice(n)
+                .filter(f => lib.text(f.d)[0] === '0')
+                .map(f => lib.text(f.d).slice(1));
         const check = async (name, press, wantBytes) => {
             const n = before();
             await press();
@@ -224,13 +264,20 @@ module.exports = {
         for (const [k, want] of table) await expectBytes(`key ${k}`, tapKey(k), want);
         await expectBytes('Enter button on empty field', tapKey('send'), '0d');
 
-        const seq = (...keys) => async () => {
-            for (const k of keys) await k();
-        };
+        const seq =
+            (...keys) =>
+            async () => {
+                for (const k of keys) await k();
+            };
         const typed = t => () => page.keyboard.insertText(t);
         await expectBytes('sticky Ctrl + typed letter c', seq(tapKey('ctrl'), typed('c')), '03');
         let st = await h.uiState(page);
-        r.add(g, 'sticky Ctrl clears after use, field stays empty', st.value === '' && !(await page.$('[data-key=ctrl].m-on')), JSON.stringify(st.value));
+        r.add(
+            g,
+            'sticky Ctrl clears after use, field stays empty',
+            st.value === '' && !(await page.$('[data-key=ctrl].m-on')),
+            JSON.stringify(st.value)
+        );
         await expectBytes('sticky Ctrl + typed letter then more text stays', seq(tapKey('ctrl'), typed('rest')), '12');
         st = await h.uiState(page);
         r.add(g, 'rest of typed word stays in the field', st.value === 'est', JSON.stringify(st.value));
@@ -241,7 +288,11 @@ module.exports = {
         });
         await expectBytes('sticky Ctrl + Up', seq(tapKey('ctrl'), tapKey('up')), '1b5b313b3541');
         await expectBytes('sticky Alt + Left', seq(tapKey('alt'), tapKey('left')), '1b5b313b3344');
-        await expectBytes('sticky Ctrl + Alt + PgUp', seq(tapKey('ctrl'), tapKey('alt'), tapKey('pgup')), '1b5b353b377e');
+        await expectBytes(
+            'sticky Ctrl + Alt + PgUp',
+            seq(tapKey('ctrl'), tapKey('alt'), tapKey('pgup')),
+            '1b5b353b377e'
+        );
         await expectBytes('sticky Alt + typed x', seq(tapKey('alt'), typed('x')), '1b78');
         await expectBytes('sticky Ctrl + symbol key -', seq(tapKey('ctrl'), tapKey('-')), '1f');
         await expectBytes(
@@ -268,7 +319,11 @@ module.exports = {
         // Application cursor mode and bracketed paste, asked for by the program
         const file2 = path.join(ctx.tmp, 'hex2.log');
         const port2 = ctx.port + 100;
-        lib.startTtyd({ port: port2, page: ctx.page, cmd: [PY, path.join(__dirname, 'hexd.py'), file2, '\\x1b[?1h\\x1b[?2004h'] });
+        lib.startTtyd({
+            port: port2,
+            page: ctx.page,
+            cmd: [PY, path.join(__dirname, 'hexd.py'), file2, '\\x1b[?1h\\x1b[?2004h'],
+        });
         await lib.waitPort(port2);
         const context2 = await lib.mobileContext(ctx.browser);
         await context2.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -280,7 +335,12 @@ module.exports = {
         await page2.tap('[data-key=paste]');
         await sleep(300);
         const got2 = fs.readFileSync(file2, 'utf8').replace(/\s+/g, '');
-        r.add(g, 'application cursor Up and bracketed paste', got2 === '1b4f41' + '1b5b3230307e' + '70' + '1b5b3230317e', got2);
+        r.add(
+            g,
+            'application cursor Up and bracketed paste',
+            got2 === '1b4f41' + '1b5b3230307e' + '70' + '1b5b3230317e',
+            got2
+        );
         await context2.close();
     },
 
@@ -307,7 +367,12 @@ module.exports = {
         await page.tap('[data-key=paste]');
         await sleep(100);
         const st = await h.uiState(page);
-        r.add(g, 'Paste failure focuses compose and says so', st.active === 'm-input' && !!(await page.$('[data-line=notice]')), st.active);
+        r.add(
+            g,
+            'Paste failure focuses compose and says so',
+            st.active === 'm-input' && !!(await page.$('[data-line=notice]')),
+            st.active
+        );
 
         // A real paste into the field keeps newlines until Send
         const file2 = path.join(ctx.tmp, 'paste2.txt');

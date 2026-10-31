@@ -264,8 +264,9 @@ class Compose extends Component<ComposeProps, ComposeState> {
         if (empty !== this.state.empty) this.setState({ empty });
         el.style.height = 'auto';
         el.style.height = `${el.scrollHeight}px`;
-        window.clearTimeout(this.draftTimer);
         const { ctrl } = this.props;
+        ctrl.composeResized();
+        window.clearTimeout(this.draftTimer);
         this.draftTimer = window.setTimeout(() => save(ctrl.draftKey, el.value || null), 250);
     }
 

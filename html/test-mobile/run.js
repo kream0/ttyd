@@ -20,7 +20,16 @@ async function main() {
             try {
                 await groups[name]({ page, browser, results, tmp, port: port++, group: name });
             } catch (e) {
-                results.add(name, 'group crashed', false, String(e.stack || e).split('\n').slice(0, 4).join(' | ').slice(0, 400));
+                results.add(
+                    name,
+                    'group crashed',
+                    false,
+                    String(e.stack || e)
+                        .split('\n')
+                        .slice(0, 4)
+                        .join(' | ')
+                        .slice(0, 400)
+                );
             }
             await lib.cleanup();
         }

@@ -123,7 +123,9 @@ function watch(page, host = '127.0.0.1') {
 
 const text = p => (Buffer.isBuffer(p) ? p.toString('utf8') : String(p));
 const resizes = log =>
-    log.sent.filter(f => text(f.d)[0] === '1' && text(f.d).includes('columns')).map(f => JSON.parse(text(f.d).slice(1)));
+    log.sent
+        .filter(f => text(f.d)[0] === '1' && text(f.d).includes('columns'))
+        .map(f => JSON.parse(text(f.d).slice(1)));
 
 // Visible terminal rows as plain text.
 function screen(page) {

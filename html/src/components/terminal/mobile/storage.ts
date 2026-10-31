@@ -21,6 +21,8 @@ export function save(key: string, value: string | null) {
     }
 }
 
+let bootId = '';
+
 // A start that never reached its first paint leaves BOOT behind; the next load then takes the safest path.
 export function bootBegin(): boolean {
     const override = urlFlags.safe();
@@ -30,12 +32,14 @@ export function bootBegin(): boolean {
         safe = true;
         save(SAFE_UNTIL, String(now + config.safeModeStickyMs));
     }
-    save(BOOT, String(now));
+    bootId = `${now}-${Math.random()}`;
+    save(BOOT, bootId);
     return override ?? safe;
 }
 
+// Only the tab that wrote the flag may clear it, or closing another tab would hide a crash.
 export function bootDone() {
-    save(BOOT, null);
+    if (load(BOOT) === bootId) save(BOOT, null);
 }
 
 export function leaveSafeMode() {

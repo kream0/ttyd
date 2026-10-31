@@ -48,6 +48,7 @@ export class MobileController implements MobileHooks {
     private scroll: ScrollEngine;
     private listener?: () => void;
     private composeEl?: HTMLTextAreaElement;
+    private composeHeight = 0;
 
     private tmuxOverride = urlFlags.tmux();
     private tmuxSeen = false;
@@ -396,10 +397,12 @@ export class MobileController implements MobileHooks {
         const start =
             buffer.type === 'normal' ? Math.max(0, buffer.viewportY - config.copyScrollbackLines) : buffer.viewportY;
         const end = Math.min(buffer.viewportY + this.term.rows, buffer.length);
+        const statusRow = buffer.baseY + this.term.rows - 1;
         const lines: string[] = [];
         for (let i = start; i < end; i++) {
             const line = buffer.getLine(i);
             if (!line) continue;
+            if (i === statusRow && this.isTmux() && line.getCell(0)?.isBgDefault() === false) continue;
             const next = buffer.getLine(i + 1);
             const text = line.translateToString(!next?.isWrapped);
             if (line.isWrapped && lines.length) lines[lines.length - 1] += text;
@@ -546,6 +549,15 @@ export class MobileController implements MobileHooks {
     private scheduleFit() {
         window.clearTimeout(this.fitTimer);
         this.fitTimer = window.setTimeout(() => this.fitNow(), config.fitDebounceMs);
+    }
+
+    // The field grows with long text, and the terminal gives up those rows instead of hiding them.
+    composeResized() {
+        const height = this.composeEl?.parentElement?.offsetHeight ?? 0;
+        if (!height || height === this.composeHeight) return;
+        this.composeHeight = height;
+        document.documentElement.style.setProperty('--m-compose-now', `${height}px`);
+        if (this.term) this.scheduleFit();
     }
 
     private fitNow() {
