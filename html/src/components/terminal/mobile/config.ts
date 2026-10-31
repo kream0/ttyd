@@ -23,7 +23,7 @@ export const config = {
     keyboardMinHeight: 120,
 };
 
-export const URL_KEYS = ['mobile', 'webgl', 'tmux', 'addons', 'safe'];
+export const URL_KEYS = ['mobile', 'webgl', 'canvas', 'tmux', 'addons', 'safe'];
 
 function flag(name: string): boolean | undefined {
     const value = new URLSearchParams(window.location.search).get(name);
@@ -34,6 +34,7 @@ function flag(name: string): boolean | undefined {
 
 export const urlFlags = {
     webgl: () => flag('webgl') === true,
+    canvas: () => flag('canvas') === true,
     addons: () => flag('addons') === true,
     tmux: () => flag('tmux'),
     safe: () => flag('safe'),

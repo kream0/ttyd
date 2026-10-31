@@ -84,6 +84,7 @@ export class ScrollEngine {
     private pinchScale = 0;
 
     private outLines = 0;
+    private outToCopy = false;
     private outTimer?: number;
     private checkTimer?: number;
 
@@ -145,6 +146,8 @@ export class ScrollEngine {
     }
 
     exitHistory() {
+        this.stopFling();
+        this.carry = 0;
         this.host.term().scrollToBottom();
         this.check();
     }
@@ -281,7 +284,7 @@ export class ScrollEngine {
         if (this.entering) {
             this.pendingLines += lines;
         } else if (this.copy) {
-            this.queueLines(lines);
+            this.queueLines(lines, true);
         } else if (lines > 0 && !this.blocked) {
             this.enterCopyMode(lines);
         }
@@ -300,7 +303,8 @@ export class ScrollEngine {
         }, ENTER_TIMEOUT_MS);
     }
 
-    private queueLines(lines: number) {
+    private queueLines(lines: number, toCopy = false) {
+        this.outToCopy = toCopy;
         this.outLines += lines;
         if (this.outTimer === undefined) this.outTimer = window.setTimeout(() => this.flushOut(), FLUSH_MS);
     }
@@ -312,6 +316,8 @@ export class ScrollEngine {
         this.outLines = 0;
         if (!lines) return;
         const term = this.host.term();
+        this.check();
+        if (this.outToCopy && !this.copy) return;
         const up = lines > 0;
         let count = Math.abs(lines);
         if (this.copy) {

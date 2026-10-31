@@ -562,9 +562,9 @@ export class Xterm {
                 terminal.loadAddon(this.webglAddon);
                 console.log('[ttyd] WebGL renderer loaded');
             } catch (e) {
-                console.log('[ttyd] WebGL renderer could not be loaded, falling back to canvas renderer', e);
+                console.log('[ttyd] WebGL renderer could not be loaded, falling back', e);
                 disposeWebglRenderer();
-                enableCanvasRenderer();
+                if (!this.options.mobile) enableCanvasRenderer();
             }
         };
 

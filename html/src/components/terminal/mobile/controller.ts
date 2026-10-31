@@ -144,6 +144,9 @@ export class MobileController implements MobileHooks {
 
         xterm.open(container);
         this.term = window.term;
+        // Scrollbars overlay on touch, but xterm reserves 15px whenever it measures zero.
+        const core = (this.term as unknown as { _core?: { viewport?: { scrollBarWidth: number } } })._core;
+        if (core?.viewport) core.viewport.scrollBarWidth = 0;
         this.lockTextarea();
         this.applyTheme(this.term.options.theme || {});
         this.mountUi();
@@ -465,14 +468,14 @@ export class MobileController implements MobileHooks {
     // Renderer
 
     private chooseRenderer(requested: RendererType): RendererType {
-        if (this.safeMode) return 'dom';
-        if (requested === 'dom') return 'dom';
-        return urlFlags.webgl() && !this.rendererLost ? 'webgl' : 'canvas';
+        if (this.safeMode || requested === 'dom') return 'dom';
+        if (urlFlags.webgl() && !this.rendererLost) return 'webgl';
+        return urlFlags.canvas() ? 'canvas' : 'dom';
     }
 
     private applyRenderer() {
         if (!this.renderer || !this.canFit()) return;
-        const type = this.rendererLost && this.renderer === 'webgl' ? 'canvas' : this.renderer;
+        const type = this.rendererLost && this.renderer === 'webgl' ? 'dom' : this.renderer;
         try {
             this.xterm.setRendererType(type);
         } catch (e) {
