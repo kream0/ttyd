@@ -1,6 +1,8 @@
 import { bind } from 'decko';
 import { Component, h } from 'preact';
 import { Xterm, XtermOptions } from './xterm';
+import { isMobile } from './mobile/config';
+import { MobileController } from './mobile/controller';
 
 import '@xterm/xterm/css/xterm.css';
 import { Modal } from '../modal';
@@ -16,13 +18,19 @@ interface State {
 export class Terminal extends Component<Props, State> {
     private container: HTMLElement;
     private xterm: Xterm;
+    private mobile?: MobileController;
 
     constructor(props: Props) {
         super();
-        this.xterm = new Xterm(props, this.showModal);
+        this.mobile = isMobile() ? new MobileController(props) : undefined;
+        this.xterm = new Xterm(this.mobile ? { ...props, mobile: this.mobile } : props, this.showModal);
     }
 
     async componentDidMount() {
+        if (this.mobile) {
+            await this.mobile.start(this.xterm, this.container);
+            return;
+        }
         await this.xterm.refreshToken();
         this.xterm.open(this.container);
         this.xterm.connect();

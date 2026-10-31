@@ -10,6 +10,7 @@ import { ImageAddon } from '@xterm/addon-image';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { OverlayAddon } from './addons/overlay';
 import { ZmodemAddon } from './addons/zmodem';
+import { URL_KEYS } from '../mobile/config';
 
 import '@xterm/xterm/css/xterm.css';
 
@@ -35,7 +36,7 @@ enum Command {
     PAUSE = '2',
     RESUME = '3',
 }
-type Preferences = ITerminalOptions & ClientOptions;
+export type Preferences = ITerminalOptions & ClientOptions;
 
 export type RendererType = 'dom' | 'canvas' | 'webgl';
 
@@ -59,7 +60,18 @@ export interface FlowControl {
     lowWater: number;
 }
 
+export interface MobileHooks {
+    safeMode: boolean;
+    filterPrefs(prefs: Preferences): Preferences;
+    canFit(): boolean;
+    onServerTitle(title: string): void;
+    onOpened(): void;
+    onDisconnected(code: number, canRetry: boolean): void;
+    onContextLoss(): void;
+}
+
 export interface XtermOptions {
+    mobile?: MobileHooks;
     wsUrl: string;
     tokenUrl: string;
     flowControl: FlowControl;
@@ -155,6 +167,7 @@ export class Xterm {
     public open(parent: HTMLElement) {
         this.terminal = new Terminal(this.options.termOptions);
         const { terminal, fitAddon, overlayAddon, clipboardAddon, webLinksAddon } = this;
+        const { mobile } = this.options;
         window.term = terminal as TtydTerminal;
         window.term.fit = () => {
             this.fitAddon.fit();
@@ -162,10 +175,17 @@ export class Xterm {
 
         terminal.loadAddon(fitAddon);
         terminal.loadAddon(overlayAddon);
-        terminal.loadAddon(clipboardAddon);
-        terminal.loadAddon(webLinksAddon);
+        if (!mobile?.safeMode) terminal.loadAddon(clipboardAddon);
+        if (!mobile) terminal.loadAddon(webLinksAddon);
 
         terminal.open(parent);
+        if (mobile) {
+            const fit = fitAddon.fit.bind(fitAddon);
+            fitAddon.fit = () => {
+                if (mobile.canFit()) fit();
+            };
+            Object.defineProperty(overlayAddon, 'showOverlay', { value: () => {} });
+        }
         fitAddon.fit();
     }
 
@@ -199,6 +219,7 @@ export class Xterm {
                 this.overlayAddon?.showOverlay('\u2702', 200);
             })
         );
+        if (this.options.mobile) return;
         register(addEventListener(window, 'resize', () => fitAddon.fit()));
         register(addEventListener(window, 'beforeunload', this.onWindowUnload));
     }
@@ -212,14 +233,14 @@ export class Xterm {
         if (this.written > limit) {
             terminal.write(data, () => {
                 this.pending = Math.max(this.pending - 1, 0);
-                if (this.pending < lowWater) {
-                    this.socket?.send(textEncoder.encode(Command.RESUME));
+                if (this.pending < lowWater && this.socket?.readyState === WebSocket.OPEN) {
+                    this.socket.send(textEncoder.encode(Command.RESUME));
                 }
             });
             this.pending++;
             this.written = 0;
-            if (this.pending > highWater) {
-                this.socket?.send(textEncoder.encode(Command.PAUSE));
+            if (this.pending > highWater && this.socket?.readyState === WebSocket.OPEN) {
+                this.socket.send(textEncoder.encode(Command.PAUSE));
             }
         } else {
             terminal.write(data);
@@ -256,6 +277,20 @@ export class Xterm {
         register(addEventListener(socket, 'error', () => (this.doReconnect = false)));
     }
 
+    public isConnected(): boolean {
+        return this.socket?.readyState === WebSocket.OPEN;
+    }
+
+    // Drops the current socket without waiting for its close event, which a dead connection can hold back for a minute.
+    public closeSocket() {
+        const { socket } = this;
+        this.dispose();
+        this.socket = undefined;
+        this.written = 0;
+        this.pending = 0;
+        socket?.close();
+    }
+
     @bind
     private onSocketOpen() {
         console.log('[ttyd] websocket connection opened');
@@ -274,7 +309,9 @@ export class Xterm {
 
         this.doReconnect = this.reconnect;
         this.initListeners();
-        terminal.focus();
+        const { mobile } = this.options;
+        if (mobile) mobile.onOpened();
+        else terminal.focus();
     }
 
     @bind
@@ -284,6 +321,13 @@ export class Xterm {
         const { refreshToken, connect, doReconnect, overlayAddon } = this;
         overlayAddon.showOverlay('Connection Closed');
         this.dispose();
+
+        const { mobile } = this.options;
+        if (mobile && !this.closeOnDisconnect) {
+            this.socket = undefined;
+            mobile.onDisconnected(event.code, this.reconnect);
+            return;
+        }
 
         // 1000: CLOSE_NORMAL
         if (event.code !== 1000 && doReconnect) {
@@ -313,6 +357,7 @@ export class Xterm {
         const queryObj = Array.from(new URLSearchParams(query) as unknown as Iterable<[string, string]>);
 
         for (const [k, queryVal] of queryObj) {
+            if (URL_KEYS.includes(k)) continue;
             let v = clientOptions[k];
             if (v === undefined) v = terminal.options[k];
             switch (typeof v) {
@@ -352,15 +397,18 @@ export class Xterm {
                 break;
             case Command.SET_WINDOW_TITLE:
                 this.title = textDecoder.decode(data);
+                this.options.mobile?.onServerTitle(this.title);
                 document.title = this.title;
                 break;
-            case Command.SET_PREFERENCES:
-                this.applyPreferences({
+            case Command.SET_PREFERENCES: {
+                const prefs = {
                     ...this.options.clientOptions,
                     ...JSON.parse(textDecoder.decode(data)),
                     ...this.parseOptsFromUrlQuery(window.location.search),
-                } as Preferences);
+                } as Preferences;
+                this.applyPreferences(this.options.mobile?.filterPrefs(prefs) ?? prefs);
                 break;
+            }
             default:
                 console.warn(`[ttyd] unknown command: ${cmd}`);
                 break;
@@ -469,7 +517,7 @@ export class Xterm {
     }
 
     @bind
-    private setRendererType(value: RendererType) {
+    public setRendererType(value: RendererType) {
         const { terminal } = this;
         const disposeCanvasRenderer = () => {
             try {
@@ -506,6 +554,10 @@ export class Xterm {
             try {
                 this.webglAddon.onContextLoss(() => {
                     this.webglAddon?.dispose();
+                    if (this.options.mobile) {
+                        this.webglAddon = undefined;
+                        this.options.mobile.onContextLoss();
+                    }
                 });
                 terminal.loadAddon(this.webglAddon);
                 console.log('[ttyd] WebGL renderer loaded');
